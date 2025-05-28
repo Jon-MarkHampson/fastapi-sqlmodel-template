@@ -2,7 +2,8 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from typing import List, Optional
 
-from app.models.hero import Hero, HeroUpdate
+from app.models.hero import Hero
+from app.schemas.hero import HeroCreate, HeroRead, HeroUpdate
 from app.db.database import engine
 
 router = APIRouter()
@@ -13,15 +14,16 @@ def get_session():
         yield session
 
 
-@router.post("/heroes/", response_model=Hero)
-def create_hero(hero: Hero, session: Session = Depends(get_session)):
-    session.add(hero)
+@router.post("/heroes/", response_model=HeroRead)
+def create_hero(hero: HeroCreate, session: Session = Depends(get_session)):
+    new_hero = Hero(**hero.model_dump())
+    session.add(new_hero)
     session.commit()
-    session.refresh(hero)
-    return hero
+    session.refresh(new_hero)
+    return new_hero
 
 
-@router.get("/heroes/", response_model=List[Hero])
+@router.get("/heroes/", response_model=List[HeroRead])
 def get_heros(
     min_age: Optional[int] = None,
     max_age: Optional[int] = None,
@@ -50,7 +52,7 @@ def get_heros(
     return heroes
 
 
-@router.get("/heroes/{hero_id}", response_model=Hero)
+@router.get("/heroes/{hero_id}", response_model=HeroRead)
 def get_hero_by_id(hero_id: int, session: Session = Depends(get_session)):
     hero = session.get(Hero, hero_id)
     if not hero:
@@ -58,10 +60,10 @@ def get_hero_by_id(hero_id: int, session: Session = Depends(get_session)):
     return hero
 
 
-@router.put("/heroes/{hero_id}", response_model=Hero)
+@router.put("/heroes/{hero_id}", response_model=HeroRead)
 def update_hero(
     hero_id: int,
-    updated_hero: Hero = Body(...),
+    updated_hero: HeroCreate,
     session: Session = Depends(get_session),
 ):
     existing_hero = session.get(Hero, hero_id)
@@ -80,7 +82,7 @@ def update_hero(
     return existing_hero
 
 
-@router.patch("/heroes/{hero_id}", response_model=Hero)
+@router.patch("/heroes/{hero_id}", response_model=HeroRead)
 def patch_hero(
     hero_id: int,
     hero_update: HeroUpdate,
